@@ -7,10 +7,10 @@ clear;
 clc;
 
 % parameters
-param.z_scalefactor = 1;
+param.z_scalefactor = 3;
 param.reslc_pre     = 'r_';
 param.max_current   = 3;
-param.lambda        = [0 1e-1 1 1e1 1e2 1e3 1e4 1e5 1e6];
+param.lambda        = [0 1e-1 1 1e1 1e2 1e3 1e4 1e5 1e6]; % regularization weightings
 
 % home
 fpath.dir.home      = '/DATA/aaghaeifar/rawdata/silent_shimming';
@@ -41,14 +41,14 @@ if isfolder(fpath.dir.results) == false
 end
 
 %% reconstruct & prepare b0
-prepare_B0(fpath.file.b0_mrd, fpath.b0)
+prepare_B0(fpath.file.b0_mrd, fpath.file)
 
 %% load & prepare adjustment
 prepare_SODA(fpath.file.soda_txt, fpath.dir.soda, param.z_scalefactor);
 
 %% reslice shimpsmap to standard space 
 [filepath, name, ext] = fileparts(fpath.file.shimsmap_nii);
-flist = cell(2,1);
+clear flist;
 flist{1} = fpath.file.std_space_nii;
 flist{2} = spm_select('ExtFPList', filepath, [name ext], inf);
 spm_reslice(char(flist), struct('mean', false, 'which', 1, 'prefix', param.reslc_pre , 'mask', false, 'interp', 2));
@@ -56,36 +56,44 @@ movefile(fullfile(filepath, [param.reslc_pre name ext]), fpath.dir.resliced);
 
 clear flist filepath name ext
 
-%% reslice b0 map and SODA to standard space
-delete(fullfile(fpath.dir.resliced, [param.reslc_pre  'scaled_slc*.nii']));
-delete(fullfile(fpath.dir.resliced, [param.reslc_pre  'slc*.nii']));
+%% reslice B0 map to standard space 
 
-flist    = cell(6,1);
+clear flist;
 flist{1} = fpath.file.std_space_nii; % first file is destination space
 flist{2} = fpath.file.phase_nii;
 flist{3} = fpath.file.mag_nii;
 flist{4} = fpath.file.mask_nii;
-flist{5} = spm_select('FPList', fpath.dir.soda, '^scaled_slc.*.nii$');  % scaled SODA
-flist{6} = spm_select('FPList', fpath.dir.soda, '^slc.*.nii$');         % original SODA
-spm_reslice(char(flist), struct('mean', false, 'which', 1, 'prefix', param.reslc_pre , 'mask', false, 'interp', 2));
+spm_reslice(char(flist), struct('mean', false, 'which', 1, 'prefix', param.reslc_pre , 'mask', false, 'interp', 0)); % nearest neighbour 
 
 % move resliced files to a separate folder
 for i=2:4
     [d, f, e] = fileparts(flist{i});
     movefile(fullfile(d, [param.reslc_pre f e]), fpath.dir.resliced);
 end
+
+%% reslice b0 map and SODA to standard space
+delete(fullfile(fpath.dir.resliced, [param.reslc_pre  'scaled_slc*.nii']));
+delete(fullfile(fpath.dir.resliced, [param.reslc_pre  'slc*.nii']));
+
+clear flist;
+flist{1} = fpath.file.std_space_nii; % first file is destination space
+flist{2} = spm_select('FPList', fpath.dir.soda, '^scaled_slc.*.nii$');  % scaled SODA
+flist{3} = spm_select('FPList', fpath.dir.soda, '^slc.*.nii$');         % original SODA
+spm_reslice(char(flist), struct('mean', false, 'which', 1, 'prefix', param.reslc_pre , 'mask', false, 'interp', 0));
+
+% move resliced files to a separate folder
 movefile(fullfile(fpath.dir.soda, [param.reslc_pre '*.nii']), fpath.dir.resliced);
 
 % combine individual SODA for demonestration
-if size(flist{5}, 1) > 1
+if size(flist{2}, 1) > 1
     Vi = spm_vol(spm_select('FPList', fpath.dir.resliced, ['^' param.reslc_pre 'scaled_slc.*.nii$']));
     spm_imcalc(Vi, fullfile(fpath.dir.data, ['soda_all_zscale=' num2str(param.z_scalefactor) '.nii']), 'sum(X)', {1, -1, -7,  16}); % {'dmtx', 'mask', 'interp', 'dtype'} = {read to matrix, nan should be zeroed, 7th degree sinc interpolation, float output}
     
     Vi = spm_vol(spm_select('FPList', fpath.dir.resliced, ['^' param.reslc_pre 'slc.*.nii$']));
     spm_imcalc(Vi, fullfile(fpath.dir.data, 'soda_all.nii'), 'sum(X)', {1, -1, -7,  16}); % {'dmtx', 'mask', 'interp', 'dtype'} = {read to matrix, nan should be zeroed, 7th degree sinc interpolation, float output}
 else
-    copyfile(flist{5}, fullfile(fpath.dir.data, ['soda_all_zscale=' num2str(param.z_scalefactor) '.nii']));
-    copyfile(flist{6}, fullfile(fpath.dir.data, 'soda_all.nii'));
+    copyfile(flist{2}, fullfile(fpath.dir.data, ['soda_all_zscale=' num2str(param.z_scalefactor) '.nii']));
+    copyfile(flist{3}, fullfile(fpath.dir.data, 'soda_all.nii'));
 end
 
 clear flist Vi i name filepath ext ans
@@ -107,12 +115,10 @@ scaled_soda_list = spm_select('FPList', fpath.dir.resliced, ['^' param.reslc_pre
 current_ul = param.max_current * ones(size(shimsmap, 4), 1);
 current_ll = -current_ul;
 
-% regularization weightings
-lambda_all   = [0 1e-1 1 1e1 1e2 1e3 1e4 1e5 1e6];
 
 n_slice      = size(scaled_soda_list, 1);
-coef         = zeros(n_slice, size(shimsmap, 4), numel(lambda_all)); % shim currents with regularized coefficient 
-sd           = zeros(n_slice, numel(lambda_all) + 1);
+coef         = zeros(n_slice, size(shimsmap, 4), numel(param.lambda)); % shim currents with regularized coefficient 
+sd           = zeros(n_slice, numel(param.lambda) + 1);
 shimsmap_row = reshape(shimsmap, [], size(shimsmap, 4));
 
 % delete(findall(0)); % close if there is any figure open
@@ -162,11 +168,11 @@ for i = 1:numel(param.lambda)
         waitbar(cslc/n_slice, f, 'Running...');
     end
 
-    niftiwrite(shimmed, fullfile(fpath.dir.results, ['shimmed_lambda=' num2str(lambda_all(i)) '_zscale=' num2str(param.z_scalefactor) '.nii']), hdr)
+    niftiwrite(shimmed, fullfile(fpath.dir.results, ['shimmed_lambda=' num2str(param.lambda(i)) '_zscale=' num2str(param.z_scalefactor) '.nii']), hdr)
 end
 close(f)
 
-save(fullfile(fpath.dir.results, ['vars_zscale=' num2str(param.z_scalefactor)]), 'coef', 'param', 'lambda_all', 'sd');
+save(fullfile(fpath.dir.results, ['vars_zscale=' num2str(param.z_scalefactor)]), 'coef', 'param', 'sd');
 clearvars -except coef sd
 
 
