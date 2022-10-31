@@ -41,7 +41,7 @@ if isfolder(fpath.dir.results) == false
 end
 
 %% reconstruct & prepare b0
-prepare_B0(fpath.file.b0_mrd, fpath.file)
+% prepare_B0(fpath.file.b0_mrd, fpath.file)
 
 %% load & prepare adjustment
 prepare_SODA(fpath.file.soda_txt, fpath.dir.soda, param.z_scalefactor);
