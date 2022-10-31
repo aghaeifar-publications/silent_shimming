@@ -1,7 +1,8 @@
 clear;
 
 % import result of step1
-load('../results/vars_zscale=1.mat');
+result_dir   = '/DATA/aaghaeifar/rawdata/silent_shimming/results';
+load(fullfile(result_dir, 'vars_zscale=1.mat'));
 
 C = coef(:,2:end,:); % exclude Freq.
 D = zeros(size(C, 1), size(C, 1), size(C, 3));
@@ -21,10 +22,15 @@ interleaved_current = [interleaved_current(2:2:end); D1(ind_end_e, 1); interleav
 
 figure(1); clf;
 subplot(2,4,[1,2,5,6]);
-imagesc(D1); colormap(inferno); axis off; colorbar; axis image; 
+imagesc(D1); colormap(inferno);  axis off; axis image;  title('Root Sum of Square of Inter-Slice Shims Current change')
+colorbar('box', 'off');
+
 
 subplot(2,4,[3,4]); 
-plot(ascending_current); ylim([0 18]); title(['Sequential Acq., \Sigma Force = ' num2str(sum(ascending_current))]);
+plot(ascending_current, 'LineWidth', 2); ylim([0 15]); title('Sequential Acquisition Scheme');
+set(gca, 'Color', 'None', 'Box', 'off', 'LineWidth', 2)
 
 subplot(2,4,[7,8]); 
-plot(interleaved_current); ylim([0 18]); title(['Interleaved Acq., \Sigma Force = ' num2str(sum(interleaved_current))]);
+x = plot(interleaved_current, 'LineWidth', 2); ylim([0 15]); title('Interleaved Acquisition Scheme');
+set(gca, 'Color', 'None', 'Box', 'off', 'LineWidth', 2)
+

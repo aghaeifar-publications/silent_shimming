@@ -6,7 +6,7 @@ load(fullfile(result_dir, 'vars_zscale=1.mat'));
 C = coef(:,2:end,:); % exclude Freq.
 D = pdist2(C(:,:,1), C(:,:,1), 'euclidean');
 
-%% sort based on euclidean distance, 
+% sort based on euclidean distance, 
 D_ordered       = inf(size(D,1), 1);
 ind_slc_ordered = zeros(size(D,1)+1, 1);
 for k=1:size(D,1)
@@ -36,13 +36,12 @@ for k=1:size(D,1)
     end
 end
 
-%% assignment problem
+% assignment problem
 % https://www.mathworks.com/matlabcentral/answers/302378-how-to-select-one-value-from-each-column-and-one-value-from-each-row-and-get-minimal-sum
 % https://stackoverflow.com/questions/14034594/choose-one-element-from-each-row-and-column-in-matrix-and-the-sum-is-minimized
 D_temp = D;
 D_temp(1:1+size(D_temp,1):end) = 2 * max(D(:));
-
-[assignment,cost] = munkres(D_temp);
+[assignment, cost] = munkres(D_temp);
 
 D_ordered_Hungarian = zeros(size(D,1), 1);
 for i=1:numel(D_ordered_Hungarian)
@@ -52,15 +51,16 @@ end
 
 
 
-%% plots
+% plots
 D_not_ordered = [diag(D(1:end-1,2:end)); D(end, 1)];
 
 figure(4); clf
-plot(D_not_ordered); hold on;
-plot(D_ordered, '--'); 
-plot(D_ordered_Hungarian, '--*');
+plot(D_not_ordered, 'LineWidth', 2); hold on;
+plot(D_ordered, '--', 'LineWidth', 2); 
+plot(D_ordered_Hungarian, '--*', 'LineWidth', 2);
+set(gca, 'Color', 'None', 'Box', 'off', 'LineWidth', 2)
 
-legend('Not Ordered', 'Ordered', 'Hungarian');
+legend('Sequential', 'Basic Sorting', 'Hungarian Algorithm', 'Color', 'None', 'Box', 'off');
 
 
 [sum(D_not_ordered), sum(D_ordered), sum(D_ordered_Hungarian)]
@@ -69,3 +69,4 @@ index_slice_all_methods = [1:size(D,1); ...
                             ind_slc_ordered(1:end-1)'; ...
                            assignment ];
 disp(index_slice_all_methods)
+
