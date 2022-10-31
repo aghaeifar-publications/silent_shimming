@@ -43,7 +43,8 @@ else
     basismaps    = double(basismaps(positive_ind, :) .* mask_w);
     
     % Run optimization
-    options = optimoptions('fmincon', 'UseParallel', true, 'SpecifyObjectiveGradient', true, 'Display', 'iter-detailed', 'Algorithm', 'interior-point', 'MaxFunEvals', 10^6, 'MaxIter', 100000);
+    % options = optimoptions('fmincon', 'UseParallel', true, 'SpecifyObjectiveGradient', true, 'Display', 'iter-detailed', 'Algorithm', 'interior-point', 'MaxFunEvals', 10^6, 'MaxIter', 100000);
+    options = optimoptions('fmincon', 'UseParallel', true, 'SpecifyObjectiveGradient', true, 'Display', 'off', 'Algorithm', 'interior-point', 'MaxFunEvals', 10^6, 'MaxIter', 100000);
     coef = fmincon(@(x) cost_fun(x, b0map, basismaps, lambda, old_current), zeros(size(current_ll)), [], [], [], [], current_ll, current_ul, [], options);
     coef = transpose(coef); 
 end

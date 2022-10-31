@@ -15,7 +15,7 @@ b0      = myMRD.img_b0 ;
 % unwrap phase
 b0_uw   = UnWrap_mex_interface(b0) .* mask_e; % unwrapping fails if I mask b0 in advance
 % convert radian to Hz
-b0_hz   = myMRD.get_b0hz(b0_uw);
+b0_hz   = myMRD.get_b0hz(b0_uw) * 9.4 / 7;
 
 
 % store results as nifti
